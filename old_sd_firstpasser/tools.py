@@ -32,7 +32,7 @@ def getJobsCount(originalP: StableDiffusionProcessingTxt2Img) -> int:
 def getTotalSteps(originalP: StableDiffusionProcessingTxt2Img, firstpass_steps: int, firstpass_denoising: float) -> int:
     totalSteps = firstpass_steps * originalP.n_iter
     secondpass_count = originalP.batch_size * originalP.n_iter
-    totalSteps += secondpass_count * math.ceil(originalP.steps * firstpass_denoising)
+    totalSteps += secondpass_count * min(math.ceil(originalP.steps * firstpass_denoising + 1), originalP.steps)
     if originalP.enable_hr:
         totalSteps += secondpass_count * originalP.hr_second_pass_steps
     return totalSteps
