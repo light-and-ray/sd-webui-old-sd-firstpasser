@@ -2,11 +2,11 @@ import copy
 from contextlib import closing
 import gradio as gr
 from PIL import Image
-from modules import ui_settings, shared, scripts_postprocessing, scripts, sd_models, processing
+from modules import shared, scripts_postprocessing, scripts, sd_models, processing
 from modules.processing import Processed, StableDiffusionProcessingImg2Img, process_images
 
-from old_sd_firstpasser.tools import ( convert_txt2img_to_img2img, limiSizeByOneDemention,
-    getJobsCountImg2Img, getTotalStepsImg2Img, interrupted, removeAllNetworksWithErrorsWarnings,
+from old_sd_firstpasser.tools import ( limiSizeByOneDemention, getJobsCountImg2Img,
+        getTotalStepsImg2Img, removeAllNetworksWithErrorsWarnings,
 )
 from old_sd_firstpasser.ui import makeUI
 if hasattr(scripts_postprocessing.ScriptPostprocessing, 'process_firstpass'):  # webui >= 1.7

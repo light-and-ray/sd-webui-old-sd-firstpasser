@@ -1,10 +1,5 @@
-import copy
-from contextlib import closing
 import gradio as gr
-import modules.scripts as scripts
 from modules import ui_settings, shared
-from modules.processing import Processed, StableDiffusionProcessingTxt2Img, process_images
-
 
 
 def makeUI():

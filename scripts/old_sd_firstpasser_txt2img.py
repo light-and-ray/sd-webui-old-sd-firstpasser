@@ -1,7 +1,7 @@
 import copy
 from contextlib import closing
 import gradio as gr
-from modules import ui_settings, shared, scripts
+from modules import shared, scripts
 from modules.processing import Processed, StableDiffusionProcessingTxt2Img, process_images
 
 from old_sd_firstpasser.tools import ( convert_txt2img_to_img2img, limiSizeByOneDemention,
