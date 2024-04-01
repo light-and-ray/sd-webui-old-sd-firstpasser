@@ -64,11 +64,18 @@ class Script(scripts.Script):
             shared.state.textinfo = "firstpassing with sd 1.x"
             processed1: Processed = process_images(txt2imgP)
         # throwning away all extra images e.g. controlnet preprocessed
-        processed1.images = processed1.images[:len(processed1.all_seeds)]
-        processed1.infotexts = processed1.infotexts[:len(processed1.all_seeds)]
+        n = len(processed1.all_seeds)
+        scriptsImages = processed1.images[n:]
+        scriptsInfotexts = processed1.infotexts[n:]
+        def processedOnExit(processed):
+            processed.images += scriptsImages
+            processed.infotexts += scriptsInfotexts
+            removeAllNetworksWithErrorsWarnings(processed)
+            return processed
+        processed1.images = processed1.images[:n]
+        processed1.infotexts = processed1.infotexts[:n]
         if interrupted():
-            removeAllNetworksWithErrorsWarnings(processed1)
-            return processed1
+            return processedOnExit(processed1)
 
         batchPocessed: Processed = None
         shared.state.textinfo = "generation"
@@ -96,8 +103,7 @@ class Script(scripts.Script):
                 batchPocessed = processed2
 
             if interrupted():
-                removeAllNetworksWithErrorsWarnings(batchPocessed)
-                return batchPocessed
+                return processedOnExit(batchPocessed)
         
         if originalP.enable_hr and hasattr(originalP, 'firstpass_image'):
             for i in range(len(batchPocessed.all_seeds)):
@@ -113,8 +119,6 @@ class Script(scripts.Script):
                     processedHR: Processed = process_images(hiresP)
                 batchPocessed.images[i] = processedHR.images[0]
                 if interrupted():
-                    removeAllNetworksWithErrorsWarnings(batchPocessed)
-                    return batchPocessed
+                    return processedOnExit(batchPocessed)
 
-        removeAllNetworksWithErrorsWarnings(batchPocessed)
-        return batchPocessed
+        return processedOnExit(batchPocessed)
