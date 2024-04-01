@@ -1,13 +1,13 @@
 import copy
 from contextlib import closing
 import gradio as gr
-import modules.scripts as scripts
-from modules import ui_settings, shared
+from modules import ui_settings, shared, scripts
 from modules.processing import Processed, StableDiffusionProcessingTxt2Img, process_images
 
 from old_sd_firstpasser.tools import ( convert_txt2img_to_img2img, limiSizeByOneDemention,
-    getJobsCount, getTotalSteps, interrupted, removeAllNetworksWithErrorsWarnings,
+    getJobsCountTxt2Img, getTotalStepsTxt2Img, interrupted, removeAllNetworksWithErrorsWarnings,
 )
+from old_sd_firstpasser.ui import makeUI
 
 
 class Script(scripts.Script):
@@ -18,40 +18,20 @@ class Script(scripts.Script):
         return not is_img2img
 
     def ui(self, is_img2img):
-        with gr.Row():
-            firstpass_steps = gr.Slider(
-                label='Firstpass steps',
-                value=20,
-                step=1,
-                minimum=1,
-                maximum=150,
-                elem_id="firstpass_steps"
-            )
-            firstpass_denoising = gr.Slider(label='Firstpass denoising',
-                value=0.55, elem_id="firstpass_denoising",
-                minimum=0.0, maximum=1.0, step=0.01
-            )
-        with gr.Row():
-            firstpass_upscaler = gr.Dropdown(
-                value="ESRGAN_4x",
-                choices=[x.name for x in shared.sd_upscalers],
-                label="Firstpass upscaler",
-                elem_id="firstpass_upscaler",
-            )
-        with gr.Row():
-            sd_1_checkpoint = ui_settings.create_setting_component('sd_model_checkpoint')
-            sd_1_checkpoint.label = "Checkpoint for SD 1.x pass"
-
-        return [firstpass_steps, firstpass_denoising, firstpass_upscaler, sd_1_checkpoint]
+        ui = makeUI()
+        gr.Markdown("If you want to use extensions on second pass too "\
+                "(e.g. sdxl controlnet in addition to sd 1.5), please use img2img "\
+                "tab, and left initial image empty")
+        return
 
 
     def run(self, originalP: StableDiffusionProcessingTxt2Img, firstpass_steps, firstpass_denoising, firstpass_upscaler, sd_1_checkpoint):
         oringinalCheckpoint = shared.opts.sd_model_checkpoint if not 'sd_model_checkpoint' in originalP.override_settings else originalP.override_settings['sd_model_checkpoint']
-        if getattr(originalP, 'firstpass_image'):
+        if getattr(originalP, 'firstpass_image', False):
             return None
         shared.total_tqdm.clear()
-        shared.state.job_count = getJobsCount(originalP)
-        shared.total_tqdm.updateTotal(getTotalSteps(originalP, firstpass_steps, firstpass_denoising))
+        shared.state.job_count = getJobsCountTxt2Img(originalP)
+        shared.total_tqdm.updateTotal(getTotalStepsTxt2Img(originalP, firstpass_steps, firstpass_denoising))
         originalP.do_not_save_grid = True
 
         txt2imgP = copy.copy(originalP)

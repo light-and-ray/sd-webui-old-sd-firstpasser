@@ -20,7 +20,7 @@ def limiSizeByOneDemention(size: tuple, limit: int):
     return (int(w), int(h))
 
 
-def getJobsCount(originalP: StableDiffusionProcessingTxt2Img) -> int:
+def getJobsCountTxt2Img(originalP: StableDiffusionProcessingTxt2Img) -> int:
     jobs = originalP.n_iter
     secondpass_count = originalP.batch_size * originalP.n_iter
     jobs += secondpass_count
@@ -29,12 +29,22 @@ def getJobsCount(originalP: StableDiffusionProcessingTxt2Img) -> int:
     return jobs
 
 
-def getTotalSteps(originalP: StableDiffusionProcessingTxt2Img, firstpass_steps: int, firstpass_denoising: float) -> int:
+def getTotalStepsTxt2Img(originalP: StableDiffusionProcessingTxt2Img, firstpass_steps: int, firstpass_denoising: float) -> int:
     totalSteps = firstpass_steps * originalP.n_iter
     secondpass_count = originalP.batch_size * originalP.n_iter
     totalSteps += secondpass_count * min(math.ceil(originalP.steps * firstpass_denoising + 1), originalP.steps)
     if originalP.enable_hr:
         totalSteps += secondpass_count * originalP.hr_second_pass_steps
+    return totalSteps
+
+
+def getJobsCountImg2Img(originalP: StableDiffusionProcessingImg2Img) -> int:
+    return 1 + originalP.n_iter
+
+
+def getTotalStepsImg2Img(originalP: StableDiffusionProcessingImg2Img, firstpass_steps: int, firstpass_denoising: float) -> int:
+    totalSteps = min(math.ceil(firstpass_steps * originalP.denoising_strength + 1), firstpass_steps)
+    totalSteps += originalP.n_iter * min(math.ceil(originalP.steps * firstpass_denoising + 1), originalP.steps)
     return totalSteps
 
 
@@ -45,7 +55,7 @@ def convert_txt2img_to_img2img(txt2img: StableDiffusionProcessingTxt2Img) -> Sta
         'do_not_save_samples', *(['scheduler'] if IS_WEBUI_1_9 else [])
     ]
     for arg in txt2imgArgs:
-        txt2imgKWArgs[arg] = getattr(txt2img, arg)
+        txt2imgKWArgs[arg] = getattr(txt2img, arg, None)
 
     img2imgArgs = {
         'init_images': [],
@@ -66,10 +76,8 @@ def convert_txt2img_to_img2img(txt2img: StableDiffusionProcessingTxt2Img) -> Sta
         'refiner_switch_at', 'seed_resize_from_h', 'seed_resize_from_w']
 
     for arg in otherArgs:
-        value = getattr(txt2img, arg)
+        value = getattr(txt2img, arg, None)
         setattr(img2img, arg, value)
-
-    # it looks like enabling txt2img scripts in img2img is hard
 
     return img2img
 
@@ -89,3 +97,4 @@ def _removeAllNetworksWithErrorsWarnings(string: str) -> str:
 
 def removeAllNetworksWithErrorsWarnings(processed: Processed):
     processed.comments = _removeAllNetworksWithErrorsWarnings(processed.comments)
+    print('!!!', processed.comments)
