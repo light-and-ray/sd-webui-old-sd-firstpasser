@@ -97,4 +97,3 @@ def _removeAllNetworksWithErrorsWarnings(string: str) -> str:
 
 def removeAllNetworksWithErrorsWarnings(processed: Processed):
     processed.comments = _removeAllNetworksWithErrorsWarnings(processed.comments)
-    print('!!!', processed.comments)
