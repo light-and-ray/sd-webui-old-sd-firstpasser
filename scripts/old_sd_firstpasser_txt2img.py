@@ -22,7 +22,7 @@ class Script(scripts.Script):
         gr.Markdown("If you want to use extensions on second pass too "\
                 "(e.g. sdxl controlnet in addition to sd 1.5), please use img2img "\
                 "tab, and left initial image empty")
-        return
+        return ui
 
 
     def run(self, originalP: StableDiffusionProcessingTxt2Img, firstpass_steps, firstpass_denoising, firstpass_upscaler, sd_1_checkpoint):

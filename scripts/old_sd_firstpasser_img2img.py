@@ -35,6 +35,7 @@ class Script(scripts.Script):
         self.enable = None
         self.scriptsImages = []
         self.scriptsInfotexts = []
+        self.originalUpscaler = None
 
     def title(self):
         return NAME
@@ -67,6 +68,7 @@ class Script(scripts.Script):
             return
 
         oringinalCheckpoint = shared.opts.sd_model_checkpoint if not 'sd_model_checkpoint' in originalP.override_settings else originalP.override_settings['sd_model_checkpoint']
+        self.originalUpscaler = shared.opts.upscaler_for_img2img
 
         try:
             shared.state.textinfo = "switching sd checkpoint"
@@ -100,7 +102,9 @@ class Script(scripts.Script):
             self.scriptsInfotexts = processed1.infotexts[n:]
             originalP.init_images = processed1.images[:n]
             originalP.denoising_strength = firstpass_denoising
-            originalP.override_settings['upscaler_for_img2img'] = firstpass_upscaler
+            if 'upscaler_for_img2img' in originalP.override_settings:
+                del originalP.override_settings['upscaler_for_img2img']
+            shared.opts.upscaler_for_img2img = firstpass_upscaler
         finally:
             shared.state.textinfo = "switching sd checkpoint"
             shared.opts.sd_model_checkpoint = oringinalCheckpoint
@@ -114,3 +118,5 @@ class Script(scripts.Script):
         processed.images += self.scriptsImages
         processed.infotexts += self.scriptsInfotexts
         removeAllNetworksWithErrorsWarnings(processed)
+        if self.originalUpscaler:
+            shared.opts.upscaler_for_img2img = self.originalUpscaler
