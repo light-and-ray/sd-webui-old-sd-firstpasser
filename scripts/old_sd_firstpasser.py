@@ -6,7 +6,7 @@ from modules import ui_settings, shared
 from modules.processing import Processed, StableDiffusionProcessingTxt2Img, process_images
 
 from old_sd_firstpasser.tools import ( convert_txt2img_to_img2img, limiSizeByOneDemention,
-    getJobsCount, getTotalSteps, interrupted,
+    getJobsCount, getTotalSteps, interrupted, removeAllNetworksWithErrorsWarnings,
 )
 
 
@@ -67,8 +67,9 @@ class Script(scripts.Script):
         processed1.images = processed1.images[:len(processed1.all_seeds)]
         processed1.infotexts = processed1.infotexts[:len(processed1.all_seeds)]
         if interrupted():
+            removeAllNetworksWithErrorsWarnings(processed1)
             return processed1
-        
+
         batchPocessed: Processed = None
         shared.state.textinfo = "generation"
         for image in processed1.images:
@@ -83,17 +84,19 @@ class Script(scripts.Script):
             with closing(img2imgP):
                 processed2: Processed = process_images(img2imgP)
             if batchPocessed:
-                batchPocessed.images += processed2.images
-                batchPocessed.infotexts += processed2.infotexts
+                n = len(processed2.all_seeds)
+                batchPocessed.images += processed2.images[:n]
+                batchPocessed.infotexts += processed2.infotexts[:n]
                 batchPocessed.all_seeds += processed2.all_seeds
                 batchPocessed.all_subseeds += processed2.all_subseeds
                 batchPocessed.all_negative_prompts += processed2.all_negative_prompts
                 batchPocessed.all_prompts += processed2.all_prompts
-                batchPocessed.comments += processed2.comments
+                batchPocessed.comments += processed2.comments[:n]
             else:
                 batchPocessed = processed2
 
             if interrupted():
+                removeAllNetworksWithErrorsWarnings(batchPocessed)
                 return batchPocessed
         
         if originalP.enable_hr and hasattr(originalP, 'firstpass_image'):
@@ -110,6 +113,8 @@ class Script(scripts.Script):
                     processedHR: Processed = process_images(hiresP)
                 batchPocessed.images[i] = processedHR.images[0]
                 if interrupted():
+                    removeAllNetworksWithErrorsWarnings(batchPocessed)
                     return batchPocessed
 
+        removeAllNetworksWithErrorsWarnings(batchPocessed)
         return batchPocessed

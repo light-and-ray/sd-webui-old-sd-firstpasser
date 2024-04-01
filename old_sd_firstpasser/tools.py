@@ -1,8 +1,6 @@
 import math
 from modules import shared
 from modules.processing import Processed, StableDiffusionProcessingTxt2Img, StableDiffusionProcessingImg2Img
-from modules.shared import opts, state
-
 
 
 IS_WEBUI_1_9 = hasattr(shared.cmd_opts, 'unix_filenames_sanitization')
@@ -34,7 +32,7 @@ def getJobsCount(originalP: StableDiffusionProcessingTxt2Img) -> int:
 def getTotalSteps(originalP: StableDiffusionProcessingTxt2Img, firstpass_steps: int, firstpass_denoising: float) -> int:
     totalSteps = firstpass_steps * originalP.n_iter
     secondpass_count = originalP.batch_size * originalP.n_iter
-    totalSteps += math.ceil(secondpass_count * originalP.steps * firstpass_denoising)
+    totalSteps += secondpass_count * math.ceil(originalP.steps * firstpass_denoising)
     if originalP.enable_hr:
         totalSteps += secondpass_count * originalP.hr_second_pass_steps
     return totalSteps
@@ -63,9 +61,16 @@ def convert_txt2img_to_img2img(txt2img: StableDiffusionProcessingTxt2Img) -> Sta
     }
 
     img2img = StableDiffusionProcessingImg2Img(**txt2imgKWArgs, **img2imgArgs)
-    # img2img.scripts = copy.copy(txt2img.scripts)
-    # img2img.scripts.initialize_scripts(is_img2img=True)
-    # img2img.script_args = txt2img.script_args
+
+    otherArgs = ['seed', 'subseed', 'subseed_strength', 'refiner_checkpoint', 'refiner_checkpoint',
+        'refiner_switch_at', 'seed_resize_from_h', 'seed_resize_from_w']
+
+    for arg in otherArgs:
+        value = getattr(txt2img, arg)
+        setattr(img2img, arg, value)
+
+    # it looks like enabling txt2img scripts in img2img is hard
+
     return img2img
 
 
@@ -73,16 +78,14 @@ def interrupted():
     return shared.state.interrupted or getattr(shared.state, 'stopping_generation', False)
 
 
-# def _removeAllNetworksWithErrorsWarnings(string: str) -> str:
-#     resLines = []
-#     for line in string.split('\n'):
-#         if not line.startswith('Networks with errors:'):
-#             resLines.append(line)
-#     return '\n'.join(resLines)
+def _removeAllNetworksWithErrorsWarnings(string: str) -> str:
+    resLines = []
+    for line in string.split('\n'):
+        if not line.startswith('Networks with errors:'):
+            resLines.append(line)
+    return '\n'.join(resLines)
 
     
 
-# def removeAllNetworksWithErrorsWarnings(processed: Processed):
-#     for i in range(len(processed.infotexts)):
-#         processed.infotexts[i] = _removeAllNetworksWithErrorsWarnings(processed.infotexts[i])
-#     processed.info = _removeAllNetworksWithErrorsWarnings(processed.info)
+def removeAllNetworksWithErrorsWarnings(processed: Processed):
+    processed.comments = _removeAllNetworksWithErrorsWarnings(processed.comments)
