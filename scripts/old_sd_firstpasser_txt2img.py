@@ -6,13 +6,14 @@ from modules.processing import Processed, StableDiffusionProcessingTxt2Img, proc
 
 from old_sd_firstpasser.tools import ( convert_txt2img_to_img2img, limiSizeByOneDemention,
     getJobsCountTxt2Img, getTotalStepsTxt2Img, interrupted, removeAllNetworksWithErrorsWarnings,
+    NAME,
 )
 from old_sd_firstpasser.ui import makeUI
 
 
 class Script(scripts.Script):
     def title(self):
-        return "Old SD firstpasser"
+        return NAME
 
     def show(self, is_img2img):
         return not is_img2img

@@ -6,7 +6,7 @@ from modules import shared, scripts_postprocessing, scripts, sd_models, processi
 from modules.processing import Processed, StableDiffusionProcessingImg2Img, process_images
 
 from old_sd_firstpasser.tools import ( limiSizeByOneDemention, getJobsCountImg2Img,
-        getTotalStepsImg2Img, removeAllNetworksWithErrorsWarnings,
+    getTotalStepsImg2Img, removeAllNetworksWithErrorsWarnings, NAME, getSecondPassBeginFromImg2Img,
 )
 from old_sd_firstpasser.ui import makeUI
 if hasattr(scripts_postprocessing.ScriptPostprocessing, 'process_firstpass'):  # webui >= 1.7
@@ -28,48 +28,30 @@ def hijack_fill_dummy_init_images(*args, **kwargs):
 processing.StableDiffusionProcessingImg2Img.__init__ = hijack_fill_dummy_init_images
 
 
-NAME = "Old SD firstpasser"
 
-class Script(scripts.Script):
+class ScriptSelectable(scripts.Script):
     def __init__(self):
-        self.enable = None
         self.scriptsImages = []
         self.scriptsInfotexts = []
         self.originalUpscaler = None
+        self.firstpass_upscaler = None
+        self.total_tqdm_total = None
+        self.total_tqdm_second_pass_begin_from = 0
 
     def title(self):
         return NAME
 
     def show(self, is_img2img):
-        return scripts.AlwaysVisible if is_img2img else False
+        return is_img2img
 
     def ui(self, is_img2img):
-        with (
-            InputAccordion(False, label=NAME) if InputAccordion
-            else gr.Accordion(NAME, open=False)
-            as enable
-        ):
-            if not InputAccordion:
-                with gr.Row():
-                    enable = gr.Checkbox(False, label="Enable")
-            ui = makeUI()
-        return [enable] + ui
+        ui = makeUI()
+        return ui
 
 
-    def before_process(self, originalP: StableDiffusionProcessingImg2Img, enable, firstpass_steps, firstpass_denoising, firstpass_upscaler, sd_1_checkpoint):
-        if getattr(originalP, 'old_sd_firstpasser_prevent_recursion', False):
-            return
-
-        self.enable = enable
-        if not self.enable:
-            if getattr(originalP.init_images[0], 'inited_by_old_sd_firstpasser', False):
-                originalP.init_images[0] = None
-                raise Exception("No input image")
-            return
-
+    def run(self, originalP: StableDiffusionProcessingImg2Img, firstpass_steps, firstpass_denoising, firstpass_upscaler, sd_1_checkpoint):
         oringinalCheckpoint = shared.opts.sd_model_checkpoint if not 'sd_model_checkpoint' in originalP.override_settings else originalP.override_settings['sd_model_checkpoint']
         self.originalUpscaler = shared.opts.upscaler_for_img2img
-
         try:
             shared.state.textinfo = "switching sd checkpoint"
             shared.opts.sd_model_checkpoint = sd_1_checkpoint
@@ -90,7 +72,9 @@ class Script(scripts.Script):
                 img2imgP.denoising_strength = 1.0
                 originalP.denoising_strength = 1.0
             shared.state.job_count = getJobsCountImg2Img(originalP)
-            shared.total_tqdm.updateTotal(getTotalStepsImg2Img(originalP, firstpass_steps, firstpass_denoising))
+            self.total_tqdm_total = getTotalStepsImg2Img(originalP, firstpass_steps, firstpass_denoising)
+            self.total_tqdm_second_pass_begin_from = getSecondPassBeginFromImg2Img(originalP, firstpass_steps)
+            shared.total_tqdm.updateTotal(self.total_tqdm_total)
 
             with closing(img2imgP):
                 img2imgP.old_sd_firstpasser_prevent_recursion = True
@@ -102,21 +86,47 @@ class Script(scripts.Script):
             self.scriptsInfotexts = processed1.infotexts[n:]
             originalP.init_images = processed1.images[:n]
             originalP.denoising_strength = firstpass_denoising
-            if 'upscaler_for_img2img' in originalP.override_settings:
-                del originalP.override_settings['upscaler_for_img2img']
-            shared.opts.upscaler_for_img2img = firstpass_upscaler
         finally:
             shared.state.textinfo = "switching sd checkpoint"
             shared.opts.sd_model_checkpoint = oringinalCheckpoint
             sd_models.reload_model_weights()
             shared.state.textinfo = "generating"
+            self.firstpass_upscaler = firstpass_upscaler
+            originalP.selectable_old_sd_firstpasser_script = self
+
+
+
+
+class ScriptBackground(scripts.Script):
+    def title(self):
+        return NAME
+
+    def show(self, is_img2img):
+        return scripts.AlwaysVisible if is_img2img else False
+
+    def ui(self, is_img2img):
+        return []
+
+    def before_process(self, originalP: StableDiffusionProcessingImg2Img, *args):
+        selectable: ScriptSelectable = getattr(originalP, 'selectable_old_sd_firstpasser_script', None)
+        if selectable is None:
+            return
+
+        if 'upscaler_for_img2img' in originalP.override_settings:
+            del originalP.override_settings['upscaler_for_img2img']
+        shared.opts.upscaler_for_img2img = selectable.firstpass_upscaler
+
+        shared.total_tqdm.updateTotal(selectable.total_tqdm_total)
+        for _ in range(selectable.total_tqdm_second_pass_begin_from):
+            shared.total_tqdm.update()
 
 
     def postprocess(self, originalP: StableDiffusionProcessingImg2Img, processed: Processed, *args):
-        if not self.enable or getattr(originalP, 'old_sd_firstpasser_prevent_recursion', False):
+        selectable: ScriptSelectable = getattr(originalP, 'selectable_old_sd_firstpasser_script', None)
+        if selectable is None:
             return
-        processed.images += self.scriptsImages
-        processed.infotexts += self.scriptsInfotexts
+        processed.images += selectable.scriptsImages
+        processed.infotexts += selectable.scriptsInfotexts
         removeAllNetworksWithErrorsWarnings(processed)
-        if self.originalUpscaler:
-            shared.opts.upscaler_for_img2img = self.originalUpscaler
+        if selectable.originalUpscaler:
+            shared.opts.upscaler_for_img2img = selectable.originalUpscaler

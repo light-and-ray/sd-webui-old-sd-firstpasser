@@ -47,6 +47,10 @@ def getTotalStepsImg2Img(originalP: StableDiffusionProcessingImg2Img, firstpass_
     totalSteps += originalP.n_iter * min(math.ceil(originalP.steps * firstpass_denoising + 1), originalP.steps)
     return totalSteps
 
+def getSecondPassBeginFromImg2Img(originalP: StableDiffusionProcessingImg2Img, firstpass_steps: int) -> int:
+    totalSteps = min(math.ceil(firstpass_steps * originalP.denoising_strength + 1), firstpass_steps)
+    return totalSteps
+
 
 def convert_txt2img_to_img2img(txt2img: StableDiffusionProcessingTxt2Img) -> StableDiffusionProcessingImg2Img:
     txt2imgKWArgs = {}
@@ -97,3 +101,7 @@ def _removeAllNetworksWithErrorsWarnings(string: str) -> str:
 
 def removeAllNetworksWithErrorsWarnings(processed: Processed):
     processed.comments = _removeAllNetworksWithErrorsWarnings(processed.comments)
+
+NAME = "Old SD firstpasser"
+
+
