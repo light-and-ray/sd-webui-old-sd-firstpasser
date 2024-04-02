@@ -15,19 +15,6 @@ else:
     InputAccordion = None
 
 
-original_StableDiffusionProcessingImg2Img__init__ = processing.StableDiffusionProcessingImg2Img.__init__
-
-def hijack_fill_dummy_init_images(*args, **kwargs):
-    if not kwargs["init_images"] or not all(kwargs["init_images"]):
-        dummy_image = Image.new('RGB', (kwargs['width'], kwargs['height']))
-        dummy_image.inited_by_old_sd_firstpasser = True
-        kwargs["init_images"] = [dummy_image]
-
-    return original_StableDiffusionProcessingImg2Img__init__(*args, **kwargs)
-
-processing.StableDiffusionProcessingImg2Img.__init__ = hijack_fill_dummy_init_images
-
-
 
 class ScriptSelectable(scripts.Script):
     def __init__(self):
@@ -65,7 +52,10 @@ class ScriptSelectable(scripts.Script):
             img2imgP.batch_size = 1
             img2imgP.n_iter = 1
     
-            if getattr(originalP.init_images[0], 'inited_by_old_sd_firstpasser', False): # txt2img equivalent
+
+            if originalP.init_images or not all(originalP.init_images): # txt2img equivalent
+                dummy_image = Image.new('RGB', (originalP.width, originalP.height))
+                img2imgP.init_images = [dummy_image]
                 img2imgP.image_mask = Image.new('L', (img2imgP.width, img2imgP.height), 255)
                 img2imgP.inpaint_full_res = False
                 img2imgP.inpainting_fill = 2 # latent noise
@@ -99,7 +89,7 @@ class ScriptSelectable(scripts.Script):
 
 class ScriptBackground(scripts.Script):
     def title(self):
-        return NAME
+        return NAME + " background"
 
     def show(self, is_img2img):
         return scripts.AlwaysVisible if is_img2img else False
