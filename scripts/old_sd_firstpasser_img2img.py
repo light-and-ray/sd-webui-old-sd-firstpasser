@@ -53,7 +53,7 @@ class ScriptSelectable(scripts.Script):
             img2imgP.n_iter = 1
     
 
-            if originalP.init_images or not all(originalP.init_images): # txt2img equivalent
+            if not originalP.init_images or not all(originalP.init_images): # txt2img equivalent
                 dummy_image = Image.new('RGB', (originalP.width, originalP.height))
                 img2imgP.init_images = [dummy_image]
                 img2imgP.image_mask = Image.new('L', (img2imgP.width, img2imgP.height), 255)
