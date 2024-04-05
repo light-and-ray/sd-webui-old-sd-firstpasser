@@ -1,14 +1,15 @@
 import copy
+import json
 from contextlib import closing
 import gradio as gr
-from modules import shared, scripts
+from modules import shared, scripts, script_callbacks
 from modules.processing import Processed, StableDiffusionProcessingTxt2Img, process_images
 
 from old_sd_firstpasser.tools import ( convert_txt2img_to_img2img, limiSizeByOneDemention,
     getJobsCountTxt2Img, getTotalStepsTxt2Img, interrupted, removeAllNetworksWithErrorsWarnings,
-    NAME,
+    NAME, quote_swap, get_model_short_title,
 )
-from old_sd_firstpasser.ui import makeUI
+from old_sd_firstpasser.ui import makeUI, pares_infotext
 
 
 class Script(scripts.Script):
@@ -19,7 +20,7 @@ class Script(scripts.Script):
         return not is_img2img
 
     def ui(self, is_img2img):
-        ui = makeUI()
+        ui = makeUI(self)
         gr.Markdown("If you want to use extensions on second pass too "\
                 "(e.g. sdxl controlnet in addition to sd 1.5), please use img2img "\
                 "tab, and left initial image empty")
@@ -34,6 +35,14 @@ class Script(scripts.Script):
         shared.state.job_count = getJobsCountTxt2Img(originalP)
         shared.total_tqdm.updateTotal(getTotalStepsTxt2Img(originalP, firstpass_steps, firstpass_denoising))
         originalP.do_not_save_grid = True
+
+        originalP.extra_generation_params['Script'] = NAME
+        originalP.extra_generation_params['Old SD firstpasser'] = json.dumps({
+                'steps': firstpass_steps,
+                'denoising': firstpass_denoising,
+                'upscaler': firstpass_upscaler,
+                'model': get_model_short_title(sd_1_checkpoint),
+        }).translate(quote_swap)
 
         txt2imgP = copy.copy(originalP)
         txt2imgP.enable_hr = False
@@ -103,3 +112,5 @@ class Script(scripts.Script):
                     return processedOnExit(batchPocessed)
 
         return processedOnExit(batchPocessed)
+
+script_callbacks.on_infotext_pasted(pares_infotext)
