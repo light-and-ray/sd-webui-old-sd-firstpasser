@@ -48,7 +48,7 @@ class ScriptSelectable(scripts.Script):
             originalP.do_not_save_grid = True
 
             originalP.extra_generation_params['Script'] = NAME
-            originalP.extra_generation_params['Old SD firstpasser'] = json.dumps({
+            originalP.extra_generation_params[NAME] = json.dumps({
                 'steps': firstpass_steps,
                 'denoising': firstpass_denoising,
                 'upscaler': firstpass_upscaler,
@@ -60,6 +60,7 @@ class ScriptSelectable(scripts.Script):
             img2imgP.steps = firstpass_steps
             img2imgP.batch_size = 1
             img2imgP.n_iter = 1
+            img2imgP.override_settings['sd_vae'] = 'Automatic'
 
             if not originalP.init_images or not all(originalP.init_images): # txt2img equivalent
                 dummy_image = Image.new('RGB', (originalP.width, originalP.height))
@@ -84,6 +85,8 @@ class ScriptSelectable(scripts.Script):
             self.scriptsInfotexts = processed1.infotexts[n:]
             originalP.init_images = processed1.images[:n]
             originalP.denoising_strength = firstpass_denoising
+            originalP.seed = processed1.all_seeds[0]
+            originalP.subseed = processed1.all_subseeds[0]
         finally:
             shared.state.textinfo = "switching sd checkpoint"
             shared.opts.sd_model_checkpoint = oringinalCheckpoint

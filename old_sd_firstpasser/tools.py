@@ -62,7 +62,7 @@ def convert_txt2img_to_img2img(txt2img: StableDiffusionProcessingTxt2Img) -> Sta
     for arg in txt2imgArgs:
         txt2imgKWArgs[arg] = getattr(txt2img, arg, None)
 
-    img2imgArgs = {
+    img2imgKWArgs = {
         'init_images': [],
         'mask': None,
         'mask_blur': 2,
@@ -75,7 +75,7 @@ def convert_txt2img_to_img2img(txt2img: StableDiffusionProcessingTxt2Img) -> Sta
         'inpainting_mask_invert': False,
     }
 
-    img2img = StableDiffusionProcessingImg2Img(**txt2imgKWArgs, **img2imgArgs)
+    img2img = StableDiffusionProcessingImg2Img(**txt2imgKWArgs, **img2imgKWArgs)
 
     otherArgs = ['seed', 'subseed', 'subseed_strength', 'refiner_checkpoint', 'refiner_checkpoint',
         'refiner_switch_at', 'seed_resize_from_h', 'seed_resize_from_w', 'extra_generation_params']

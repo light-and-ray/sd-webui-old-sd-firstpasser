@@ -37,7 +37,7 @@ class Script(scripts.Script):
         originalP.do_not_save_grid = True
 
         originalP.extra_generation_params['Script'] = NAME
-        originalP.extra_generation_params['Old SD firstpasser'] = json.dumps({
+        originalP.extra_generation_params[NAME] = json.dumps({
                 'steps': firstpass_steps,
                 'denoising': firstpass_denoising,
                 'upscaler': firstpass_upscaler,
@@ -48,6 +48,7 @@ class Script(scripts.Script):
         txt2imgP.enable_hr = False
         txt2imgP.width, txt2imgP.height = limiSizeByOneDemention((originalP.width, originalP.height), 512)
         txt2imgP.override_settings['sd_model_checkpoint'] = sd_1_checkpoint
+        txt2imgP.override_settings['sd_vae'] = 'Automatic'
         txt2imgP.steps = firstpass_steps
 
         with closing(txt2imgP):
@@ -69,14 +70,16 @@ class Script(scripts.Script):
 
         batchPocessed: Processed = None
         shared.state.textinfo = "generation"
-        for image in processed1.images:
+        for idx in range(len(processed1.images)):
             img2imgP = convert_txt2img_to_img2img(originalP)
             img2imgP.batch_size = 1
             img2imgP.n_iter = 1
-            img2imgP.init_images = [image]
+            img2imgP.init_images = [processed1.images[idx]]
             img2imgP.denoising_strength = firstpass_denoising
             img2imgP.override_settings['sd_model_checkpoint'] = oringinalCheckpoint
             img2imgP.override_settings['upscaler_for_img2img'] = firstpass_upscaler
+            img2imgP.seed = processed1.all_seeds[idx]
+            img2imgP.subseed = processed1.all_subseeds[idx]
 
             with closing(img2imgP):
                 processed2: Processed = process_images(img2imgP)
