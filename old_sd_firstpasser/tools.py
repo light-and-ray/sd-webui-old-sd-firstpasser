@@ -1,9 +1,10 @@
 import math
-from modules import shared
+from modules import shared, sd_models
 from modules.processing import Processed, StableDiffusionProcessingTxt2Img, StableDiffusionProcessingImg2Img
 
 
 IS_WEBUI_1_9 = hasattr(shared.cmd_opts, 'unix_filenames_sanitization')
+quote_swap = str.maketrans('\'"', '"\'')
 
 
 def limiSizeByOneDemention(size: tuple, limit: int):
@@ -77,7 +78,7 @@ def convert_txt2img_to_img2img(txt2img: StableDiffusionProcessingTxt2Img) -> Sta
     img2img = StableDiffusionProcessingImg2Img(**txt2imgKWArgs, **img2imgArgs)
 
     otherArgs = ['seed', 'subseed', 'subseed_strength', 'refiner_checkpoint', 'refiner_checkpoint',
-        'refiner_switch_at', 'seed_resize_from_h', 'seed_resize_from_w']
+        'refiner_switch_at', 'seed_resize_from_h', 'seed_resize_from_w', 'extra_generation_params']
 
     for arg in otherArgs:
         value = getattr(txt2img, arg, None)
@@ -105,3 +106,7 @@ def removeAllNetworksWithErrorsWarnings(processed: Processed):
 NAME = "Old SD firstpasser"
 
 
+def get_model_short_title(model_aliases):
+    if model := sd_models.get_closet_checkpoint_match(model_aliases):
+        return model.short_title
+    return model_aliases

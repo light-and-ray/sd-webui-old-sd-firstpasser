@@ -1,12 +1,13 @@
 import copy
 from contextlib import closing
-import gradio as gr
+import json
 from PIL import Image
-from modules import shared, scripts_postprocessing, scripts, sd_models, processing
+from modules import shared, scripts_postprocessing, scripts, sd_models
 from modules.processing import Processed, StableDiffusionProcessingImg2Img, process_images
 
-from old_sd_firstpasser.tools import ( limiSizeByOneDemention, getJobsCountImg2Img,
-    getTotalStepsImg2Img, removeAllNetworksWithErrorsWarnings, NAME, getSecondPassBeginFromImg2Img,
+from old_sd_firstpasser.tools import (
+    limiSizeByOneDemention, getJobsCountImg2Img, getTotalStepsImg2Img, removeAllNetworksWithErrorsWarnings, NAME,
+    getSecondPassBeginFromImg2Img, quote_swap, get_model_short_title,
 )
 from old_sd_firstpasser.ui import makeUI
 if hasattr(scripts_postprocessing.ScriptPostprocessing, 'process_firstpass'):  # webui >= 1.7
@@ -32,7 +33,7 @@ class ScriptSelectable(scripts.Script):
         return is_img2img
 
     def ui(self, is_img2img):
-        ui = makeUI()
+        ui = makeUI(self)
         return ui
 
 
@@ -46,12 +47,19 @@ class ScriptSelectable(scripts.Script):
 
             originalP.do_not_save_grid = True
 
+            originalP.extra_generation_params['Script'] = NAME
+            originalP.extra_generation_params['Old SD firstpasser'] = json.dumps({
+                'steps': firstpass_steps,
+                'denoising': firstpass_denoising,
+                'upscaler': firstpass_upscaler,
+                'model': get_model_short_title(sd_1_checkpoint),
+            }).translate(quote_swap)
+
             img2imgP = copy.copy(originalP)
             img2imgP.width, img2imgP.height = limiSizeByOneDemention((originalP.width, originalP.height), 512)
             img2imgP.steps = firstpass_steps
             img2imgP.batch_size = 1
             img2imgP.n_iter = 1
-    
 
             if not originalP.init_images or not all(originalP.init_images): # txt2img equivalent
                 dummy_image = Image.new('RGB', (originalP.width, originalP.height))

@@ -1,8 +1,10 @@
+import json
 import gradio as gr
 from modules import ui_settings, shared
+from old_sd_firstpasser.tools import quote_swap
 
 
-def makeUI():
+def makeUI(script):
     with gr.Row():
         firstpass_steps = gr.Slider(
             label='Firstpass steps',
@@ -27,5 +29,22 @@ def makeUI():
         sd_1_checkpoint = ui_settings.create_setting_component('sd_model_checkpoint')
         sd_1_checkpoint.label = "Checkpoint for SD 1.x pass"
 
+    def get_infotext_field(d, field):
+        if 'Old SD firstpasser' in d:
+            return d['Old SD firstpasser'].get(field)
+
+    script.infotext_fields = [
+        (firstpass_steps, lambda d: get_infotext_field(d, 'steps')),
+        (firstpass_denoising, lambda d: get_infotext_field(d, 'denoising')),
+        (firstpass_upscaler, lambda d: get_infotext_field(d, 'upscaler')),
+        (sd_1_checkpoint, lambda d: get_infotext_field(d, 'model')),
+    ]
+
     return [firstpass_steps, firstpass_denoising, firstpass_upscaler, sd_1_checkpoint]
 
+
+def pares_infotext(infotext, params):
+    try:
+        params['Old SD firstpasser'] = json.loads(params['Old SD firstpasser'].translate(quote_swap))
+    except Exception:
+        pass
