@@ -141,7 +141,8 @@ def getSDVersion(lora: str):
 
 def guessNetworkType(p: StableDiffusionProcessing):
     p = copy.copy(p)
-    loras = re.findall('<lora:(.+?):', p.prompt, re.IGNORECASE)
+    fullPrompt = shared.prompt_styles.apply_styles_to_prompt(p.prompt, p.styles)
+    loras = re.findall('<lora:(.+?):', fullPrompt, re.IGNORECASE)
 
     for lora in loras:
         sd_version = getSDVersion(lora)
