@@ -7,7 +7,7 @@ IS_WEBUI_1_9 = hasattr(shared.cmd_opts, 'unix_filenames_sanitization')
 quote_swap = str.maketrans('\'"', '"\'')
 
 
-def limiSizeByOneDemention(size: tuple, limit: int):
+def limitSizeByOneDimension(size: tuple, limit: int):
     w, h = size
     if h > w:
         if h > limit:
@@ -98,7 +98,7 @@ def _removeAllNetworksWithErrorsWarnings(string: str) -> str:
             resLines.append(line)
     return '\n'.join(resLines)
 
-    
+
 
 def removeAllNetworksWithErrorsWarnings(processed: Processed):
     processed.comments = _removeAllNetworksWithErrorsWarnings(processed.comments)

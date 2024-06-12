@@ -6,7 +6,7 @@ from modules import shared, scripts_postprocessing, scripts, sd_models
 from modules.processing import Processed, StableDiffusionProcessingImg2Img, process_images
 
 from old_sd_firstpasser.tools import (
-    limiSizeByOneDemention, getJobsCountImg2Img, getTotalStepsImg2Img, removeAllNetworksWithErrorsWarnings, NAME,
+    limitSizeByOneDimension, getJobsCountImg2Img, getTotalStepsImg2Img, removeAllNetworksWithErrorsWarnings, NAME,
     getSecondPassBeginFromImg2Img, quote_swap, get_model_short_title,
 )
 from old_sd_firstpasser.ui import makeUI
@@ -38,7 +38,7 @@ class ScriptSelectable(scripts.Script):
 
 
     def run(self, originalP: StableDiffusionProcessingImg2Img, firstpass_steps, firstpass_denoising, firstpass_upscaler, sd_1_checkpoint):
-        oringinalCheckpoint = shared.opts.sd_model_checkpoint if not 'sd_model_checkpoint' in originalP.override_settings else originalP.override_settings['sd_model_checkpoint']
+        originalCheckpoint = shared.opts.sd_model_checkpoint if not 'sd_model_checkpoint' in originalP.override_settings else originalP.override_settings['sd_model_checkpoint']
         self.originalUpscaler = shared.opts.upscaler_for_img2img
         try:
             shared.state.textinfo = "switching sd checkpoint"
@@ -56,7 +56,7 @@ class ScriptSelectable(scripts.Script):
             }).translate(quote_swap)
 
             img2imgP = copy.copy(originalP)
-            img2imgP.width, img2imgP.height = limiSizeByOneDemention((originalP.width, originalP.height), 512)
+            img2imgP.width, img2imgP.height = limitSizeByOneDimension((originalP.width, originalP.height), 512)
             img2imgP.steps = firstpass_steps
             img2imgP.batch_size = 1
             img2imgP.n_iter = 1
@@ -79,7 +79,7 @@ class ScriptSelectable(scripts.Script):
                 img2imgP.old_sd_firstpasser_prevent_recursion = True
                 shared.state.textinfo = "firstpassing with sd 1.x"
                 processed1: Processed = process_images(img2imgP)
-            # throwning away all extra images e.g. controlnet preprocessed
+            # throwing away all extra images e.g. controlnet preprocessed
             n = len(processed1.all_seeds)
             self.scriptsImages = processed1.images[n:]
             self.scriptsInfotexts = processed1.infotexts[n:]
@@ -89,7 +89,7 @@ class ScriptSelectable(scripts.Script):
             originalP.subseed = processed1.all_subseeds[0]
         finally:
             shared.state.textinfo = "switching sd checkpoint"
-            shared.opts.sd_model_checkpoint = oringinalCheckpoint
+            shared.opts.sd_model_checkpoint = originalCheckpoint
             sd_models.reload_model_weights()
             shared.state.textinfo = "generating"
             self.firstpass_upscaler = firstpass_upscaler
