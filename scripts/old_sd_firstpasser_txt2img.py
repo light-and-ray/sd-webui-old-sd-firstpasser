@@ -7,7 +7,7 @@ from modules.processing import Processed, StableDiffusionProcessingTxt2Img, proc
 
 from old_sd_firstpasser.tools import ( convert_txt2img_to_img2img, limitSizeByOneDimension,
     getJobsCountTxt2Img, getTotalStepsTxt2Img, interrupted, removeAllNetworksWithErrorsWarnings,
-    NAME, quote_swap, get_model_short_title,
+    NAME, quote_swap, get_model_short_title, guessNetworkType,
 )
 from old_sd_firstpasser.ui import makeUI, pares_infotext
 
@@ -27,7 +27,10 @@ class Script(scripts.Script):
         return ui
 
 
-    def run(self, originalP: StableDiffusionProcessingTxt2Img, firstpass_steps, firstpass_denoising, firstpass_upscaler, sd_1_checkpoint):
+    def run(self, originalP: StableDiffusionProcessingTxt2Img, firstpass_steps, firstpass_denoising,
+            firstpass_upscaler, sd_1_checkpoint, sdxl_checkpoint, network_type):
+        if network_type == "Auto":
+            network_type = guessNetworkType(originalP)
         originalCheckpoint = shared.opts.sd_model_checkpoint if not 'sd_model_checkpoint' in originalP.override_settings else originalP.override_settings['sd_model_checkpoint']
         if getattr(originalP, 'firstpass_image', False):
             return None
@@ -41,18 +44,23 @@ class Script(scripts.Script):
                 'steps': firstpass_steps,
                 'denoising': firstpass_denoising,
                 'upscaler': firstpass_upscaler,
-                'model': get_model_short_title(sd_1_checkpoint),
+                'model_sd1': get_model_short_title(sd_1_checkpoint),
+                'model_sdxl': get_model_short_title(sdxl_checkpoint),
         }).translate(quote_swap)
 
         txt2imgP = copy.copy(originalP)
         txt2imgP.enable_hr = False
-        txt2imgP.width, txt2imgP.height = limitSizeByOneDimension((originalP.width, originalP.height), 512)
-        txt2imgP.override_settings['sd_model_checkpoint'] = sd_1_checkpoint
+        if network_type == 'SD1':
+            txt2imgP.width, txt2imgP.height = limitSizeByOneDimension((originalP.width, originalP.height), 512)
+            txt2imgP.override_settings['sd_model_checkpoint'] = sd_1_checkpoint
+        else: # SDXL
+            txt2imgP.width, txt2imgP.height = limitSizeByOneDimension((originalP.width, originalP.height), 1024)
+            txt2imgP.override_settings['sd_model_checkpoint'] = sdxl_checkpoint
         txt2imgP.override_settings['sd_vae'] = 'Automatic'
         txt2imgP.steps = firstpass_steps
 
         with closing(txt2imgP):
-            shared.state.textinfo = "firstpassing with sd 1.x"
+            shared.state.textinfo = f"firstpassing with {network_type.lower()}"
             processed1: Processed = process_images(txt2imgP)
         # throning away all extra images e.g. controlnet preprocessed
         n = len(processed1.all_seeds)

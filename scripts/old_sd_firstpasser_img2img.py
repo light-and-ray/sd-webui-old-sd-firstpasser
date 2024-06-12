@@ -7,7 +7,7 @@ from modules.processing import Processed, StableDiffusionProcessingImg2Img, proc
 
 from old_sd_firstpasser.tools import (
     limitSizeByOneDimension, getJobsCountImg2Img, getTotalStepsImg2Img, removeAllNetworksWithErrorsWarnings, NAME,
-    getSecondPassBeginFromImg2Img, quote_swap, get_model_short_title,
+    getSecondPassBeginFromImg2Img, quote_swap, get_model_short_title, guessNetworkType,
 )
 from old_sd_firstpasser.ui import makeUI
 if hasattr(scripts_postprocessing.ScriptPostprocessing, 'process_firstpass'):  # webui >= 1.7
@@ -37,12 +37,18 @@ class ScriptSelectable(scripts.Script):
         return ui
 
 
-    def run(self, originalP: StableDiffusionProcessingImg2Img, firstpass_steps, firstpass_denoising, firstpass_upscaler, sd_1_checkpoint):
+    def run(self, originalP: StableDiffusionProcessingImg2Img, firstpass_steps, firstpass_denoising,
+            firstpass_upscaler, sd_1_checkpoint, sdxl_checkpoint, network_type):
+        if network_type == "Auto":
+            network_type = guessNetworkType(originalP)
         originalCheckpoint = shared.opts.sd_model_checkpoint if not 'sd_model_checkpoint' in originalP.override_settings else originalP.override_settings['sd_model_checkpoint']
         self.originalUpscaler = shared.opts.upscaler_for_img2img
         try:
             shared.state.textinfo = "switching sd checkpoint"
-            shared.opts.sd_model_checkpoint = sd_1_checkpoint
+            if network_type == "SD1":
+                shared.opts.sd_model_checkpoint = sd_1_checkpoint
+            else: # SDXL
+                shared.opts.sd_model_checkpoint = sdxl_checkpoint
             sd_models.reload_model_weights()
 
             originalP.do_not_save_grid = True
@@ -52,11 +58,15 @@ class ScriptSelectable(scripts.Script):
                 'steps': firstpass_steps,
                 'denoising': firstpass_denoising,
                 'upscaler': firstpass_upscaler,
-                'model': get_model_short_title(sd_1_checkpoint),
+                'model_sd1': get_model_short_title(sd_1_checkpoint),
+                'model_sdxl': get_model_short_title(sdxl_checkpoint),
             }).translate(quote_swap)
 
             img2imgP = copy.copy(originalP)
-            img2imgP.width, img2imgP.height = limitSizeByOneDimension((originalP.width, originalP.height), 512)
+            if network_type == 'SD1':
+                img2imgP.width, img2imgP.height = limitSizeByOneDimension((originalP.width, originalP.height), 512)
+            else: # SDXL
+                img2imgP.width, img2imgP.height = limitSizeByOneDimension((originalP.width, originalP.height), 1024)
             img2imgP.steps = firstpass_steps
             img2imgP.batch_size = 1
             img2imgP.n_iter = 1
@@ -77,7 +87,7 @@ class ScriptSelectable(scripts.Script):
 
             with closing(img2imgP):
                 img2imgP.old_sd_firstpasser_prevent_recursion = True
-                shared.state.textinfo = "firstpassing with sd 1.x"
+                shared.state.textinfo = f"firstpassing with {network_type.lower()}"
                 processed1: Processed = process_images(img2imgP)
             # throwing away all extra images e.g. controlnet preprocessed
             n = len(processed1.all_seeds)

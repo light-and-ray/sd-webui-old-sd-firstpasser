@@ -1,6 +1,11 @@
-import math
+import math, copy, re
+import gradio as gr
 from modules import shared, sd_models
-from modules.processing import Processed, StableDiffusionProcessingTxt2Img, StableDiffusionProcessingImg2Img
+from modules.processing import (Processed, StableDiffusionProcessingTxt2Img,
+    StableDiffusionProcessingImg2Img, StableDiffusionProcessing,
+)
+import networks
+from modules import ui_extra_networks
 
 
 IS_WEBUI_1_9 = hasattr(shared.cmd_opts, 'unix_filenames_sanitization')
@@ -110,3 +115,48 @@ def get_model_short_title(model_aliases):
     if model := sd_models.get_closet_checkpoint_match(model_aliases):
         return model.short_title
     return model_aliases
+
+
+def getSDVersion(lora: str):
+    lora_on_disk = networks.available_networks.get(lora)
+    if not lora_on_disk:
+        lora_on_disk = networks.available_network_aliases.get(lora)
+    if not lora_on_disk:
+        return None
+
+    loraPage = None
+    for page in ui_extra_networks.extra_pages:
+        if page.title == "Lora":
+            loraPage = page
+            break
+    assert loraPage
+
+    for item in loraPage.list_items():
+        if item['filename'] == lora_on_disk.filename:
+            return item['sd_version']
+
+    return None
+
+
+
+def guessNetworkType(p: StableDiffusionProcessing):
+    p = copy.copy(p)
+    loras = re.findall('<lora:(.+?):', p.prompt, re.IGNORECASE)
+
+    for lora in loras:
+        sd_version = getSDVersion(lora)
+
+        print(f'Lora {lora}: {sd_version}')
+
+        if sd_version in ('SD1', 'SDXL'):
+            print(f'Guessed network type is {sd_version}', flush=True)
+            return sd_version
+
+        if sd_version == 'Unknown':
+            text = (f"Lora '{lora}' has 'Unknown' type in metadata. You should set it up "
+                "inside 'Lora' tab")
+            print(f'\n*** {text}\n', flush=True)
+            gr.Warning(text)
+
+
+    raise Exception("Can't guess 'Firstpass network type', please set it up manually")
