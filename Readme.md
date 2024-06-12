@@ -1,6 +1,6 @@
 # Old SD firstpasser
 
-This is an extension for [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) which adds selectable txt2img and img2img script, which firstpasses image with SD 1.x model. It is useful if you want to use Loras, Embeddings, ControlNet etc made for SD 1.x inside SDXL very much. If SD 3 is released, I will add SDXL firstpassing support too
+This is an extension for [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) which adds selectable txt2img and img2img script, which firstpasses image with SD 1.x model. It is useful if you want to use Loras, Embeddings, ControlNet etc made for SD 1.x or SDXL inside SDXL or SD3 Medium
 
 ![](/images/screenshot.jpg)
 
